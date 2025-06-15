@@ -1,0 +1,103 @@
+name: Release rust-token-fetch
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and Release Binaries
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Clean build
+        run: cargo clean
+
+      - name: Build Linux binary
+        run: |
+          cargo build --release
+          mkdir -p dist/linux
+          cp target/release/rust-token-fetch dist/linux/
+
+  mac-release:
+    name: Build macOS Universal Binary
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Add targets
+        run: |
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      - name: Build for both architectures
+        run: |
+          cargo build --release --target aarch64-apple-darwin
+          cargo build --release --target x86_64-apple-darwin
+          mkdir -p dist/macos
+          lipo -create -output dist/macos/rust-token-fetch \
+            target/aarch64-apple-darwin/release/rust-token-fetch \
+            target/x86_64-apple-darwin/release/rust-token-fetch
+
+  gh-release:
+    name: Create GitHub Release
+    needs: [release, mac-release]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Download artifacts
+        run: |
+          mkdir -p package/rust-token-fetch-${{ github.ref_name }}
+          cp -r dist/* package/rust-token-fetch-${{ github.ref_name }}
+
+      - name: Create tar.gz archive
+        run: |
+          cd package
+          tar -czf rust-token-fetch-${{ github.ref_name }}.tar.gz rust-token-fetch-${{ github.ref_name }}
+
+      - name: Generate release notes
+        run: |
+          TAG=${{ github.ref_name }}
+          if [ -f CHANGELOG.md ]; then
+            awk "/^## $TAG/{flag=1; next} /^## /{flag=0} flag" CHANGELOG.md > body.md
+            if [ ! -s body.md ]; then
+              echo "## rust-token-fetch $TAG" > body.md
+              git log --oneline $(git describe --tags --abbrev=0 HEAD^)..HEAD >> body.md
+            fi
+          else
+            echo "## rust-token-fetch $TAG" > body.md
+            echo "- Built from commit ${{ github.sha }}" >> body.md
+          fi
+
+      - name: Upload GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: rust-token-fetch ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          body_path: body.md
+          files: package/rust-token-fetch-${{ github.ref_name }}.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
