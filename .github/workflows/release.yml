@@ -61,23 +61,23 @@ jobs:
 
   gh-release:
     name: Create GitHub Release
-    needs: [release, mac-release]
+    needs: [release]
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: Checkout source
         uses: actions/checkout@v3
-
-      - name: Download artifacts
+    
+      - name: Download built binary
         run: |
           mkdir -p package/rust-token-fetch-${{ github.ref_name }}
-          cp -r dist/* package/rust-token-fetch-${{ github.ref_name }}
-
+          cp target/release/rust-token-fetch package/rust-token-fetch-${{ github.ref_name }}/
+    
       - name: Create tar.gz archive
         run: |
           cd package
           tar -czf rust-token-fetch-${{ github.ref_name }}.tar.gz rust-token-fetch-${{ github.ref_name }}
-
+    
       - name: Generate release notes
         run: |
           TAG=${{ github.ref_name }}
@@ -91,7 +91,7 @@ jobs:
             echo "## rust-token-fetch $TAG" > body.md
             echo "- Built from commit ${{ github.sha }}" >> body.md
           fi
-
+    
       - name: Upload GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -101,3 +101,4 @@ jobs:
           files: package/rust-token-fetch-${{ github.ref_name }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
