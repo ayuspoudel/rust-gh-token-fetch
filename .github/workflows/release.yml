@@ -84,13 +84,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: rust-token-fetch-linux
-          path: package/rust-token-fetch-${{ github.ref_name }}
+          path: package/rust-token-fetch-${{ github.ref_name }}/linux
 
       - name: Download macOS binary
         uses: actions/download-artifact@v4
         with:
           name: rust-token-fetch-macos
-          path: package/rust-token-fetch-${{ github.ref_name }}
+          path: package/rust-token-fetch-${{ github.ref_name }}/macos
 
       - name: Create tar.gz archive
         run: |
