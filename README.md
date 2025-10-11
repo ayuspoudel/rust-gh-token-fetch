@@ -4,7 +4,7 @@ A blazing fast, zero-dependency CLI to generate GitHub App installation tokens. 
 
 ---
 
-## ⚡ Usage
+## Usage
 
 ```bash
 # Option 1: Using private key path
